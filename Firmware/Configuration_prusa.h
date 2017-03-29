@@ -32,14 +32,14 @@ const bool Y_MIN_ENDSTOP_INVERTING = false; // set to true to invert the logic o
 const bool Z_MIN_ENDSTOP_INVERTING = false; // set to true to invert the logic of the endstop.
 
 // Home position
-#define MANUAL_X_HOME_POS 0
+#define MANUAL_X_HOME_POS 0 
 #define MANUAL_Y_HOME_POS -2.2
 #define MANUAL_Z_HOME_POS 0.15
 
 // Travel limits after homing
-#define X_MAX_POS 150
+#define X_MAX_POS 155
 #define X_MIN_POS 0
-#define Y_MAX_POS 150
+#define Y_MAX_POS 155
 #define Y_MIN_POS -2.2
 #define Z_MAX_POS 140
 #define Z_MIN_POS 0.15
@@ -244,27 +244,27 @@ PREHEAT SETTINGS
 
 #define PLA_PREHEAT_HOTEND_TEMP 215
 #define PLA_PREHEAT_HPB_TEMP 55
-#define PLA_PREHEAT_FAN_SPEED 0
+#define PLA_PREHEAT_FAN_SPEED 0  
 
 #define ABS_PREHEAT_HOTEND_TEMP 255
 #define ABS_PREHEAT_HPB_TEMP 100
-#define ABS_PREHEAT_FAN_SPEED 0
+#define ABS_PREHEAT_FAN_SPEED 0 
 
 #define HIPS_PREHEAT_HOTEND_TEMP 220
 #define HIPS_PREHEAT_HPB_TEMP 100
-#define HIPS_PREHEAT_FAN_SPEED 0
+#define HIPS_PREHEAT_FAN_SPEED 0 
 
 #define PP_PREHEAT_HOTEND_TEMP 254
 #define PP_PREHEAT_HPB_TEMP 100
-#define PP_PREHEAT_FAN_SPEED 0
+#define PP_PREHEAT_FAN_SPEED 0 
 
 #define PET_PREHEAT_HOTEND_TEMP 240
 #define PET_PREHEAT_HPB_TEMP 90
-#define PET_PREHEAT_FAN_SPEED 0
+#define PET_PREHEAT_FAN_SPEED 0 
 
 #define FLEX_PREHEAT_HOTEND_TEMP 230
 #define FLEX_PREHEAT_HPB_TEMP 50
-#define FLEX_PREHEAT_FAN_SPEED 0
+#define FLEX_PREHEAT_FAN_SPEED 0 
 
 /*------------------------------------
 THERMISTORS SETTINGS
@@ -290,7 +290,7 @@ THERMISTORS SETTINGS
 // 10 is 100k RS thermistor 198-961 (4.7k pullup)
 // 11 is 100k beta 3950 1% thermistor (4.7k pullup)
 // 12 is 100k 0603 SMD Vishay NTCS0603E3104FXT (4.7k pullup) (calibrated for Makibox hot bed)
-// 13 is 100k Hisens 3950  1% up to 300°C for hotend "Simple ONE " & "Hotend "All In ONE"
+// 13 is 100k Hisens 3950  1% up to 300°C for hotend "Simple ONE " & "Hotend "All In ONE" 
 // 20 is the PT100 circuit found in the Ultimainboard V2.x
 // 60 is 100k Maker's Tool Works Kapton Bed Thermistor beta=3950
 //
@@ -323,5 +323,11 @@ THERMISTORS SETTINGS
 
 #define Z_BABYSTEP_MIN -3999
 #define Z_BABYSTEP_MAX 0
+
+#define PING_TIME 60 //time in s
+#define PING_TIME_LONG 600 //10 min; used when length of commands buffer > 0 to avoid false triggering when dealing with long gcodes
+#define PING_ALLERT_PERIOD 60 //time in s
+
+#define LONG_PRESS_TIME 1000 //time in ms for button long press
 
 #endif //__CONFIGURATION_PRUSA_H
