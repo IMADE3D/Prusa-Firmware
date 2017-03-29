@@ -176,9 +176,9 @@ BED SETTINGS
 
 // Mesh definitions
 #define MESH_MIN_X 35
-#define MESH_MAX_X 238
+#define MESH_MAX_X 150
 #define MESH_MIN_Y 6
-#define MESH_MAX_Y 202
+#define MESH_MAX_Y 150
 
 // Mesh upsample definition
 #define MESH_NUM_X_POINTS 7
