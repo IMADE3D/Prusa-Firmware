@@ -107,6 +107,10 @@ unsigned long allert_timer = millis();
 bool printer_connected = true;
 
 
+bool long_press_active = false;
+long long_press_timer = millis();
+bool button_pressed = false;
+
 bool menuExiting = false;
 
 #ifdef FILAMENT_LCD_DISPLAY
@@ -152,6 +156,7 @@ static void lcd_control_motion_menu();
 static void lcd_control_volumetric_menu();
 
 static void prusa_stat_printerstatus(int _status);
+static void prusa_stat_farm_number();
 static void prusa_stat_temperatures();
 static void prusa_stat_printinfo();
 static void lcd_farm_no();
@@ -264,15 +269,16 @@ volatile uint8_t buttons_reprapworld_keypad; // to store the reprapworld_keypad 
 volatile uint8_t slow_buttons;//Contains the bits of the currently pressed buttons.
 #endif
 uint8_t currentMenuViewOffset;              /* scroll offset in the current menu */
-uint32_t blocking_enc;
 uint8_t lastEncoderBits;
 uint32_t encoderPosition;
+uint32_t savedEncoderPosition;
 #if (SDCARDDETECT > 0)
 bool lcd_oldcardstatus;
 #endif
 #endif //ULTIPANEL
 
 menuFunc_t currentMenu = lcd_status_screen; /* function pointer to the currently active menu */
+menuFunc_t savedMenu;
 uint32_t lcd_next_update_millis;
 uint8_t lcd_status_update_delay;
 bool ignore_click = false;
@@ -1208,7 +1214,7 @@ void lcd_menu_statistics()
 
 
 static void _lcd_move(const char *name, int axis, int min, int max) {
-  if (encoderPosition != 0) {
+	if (encoderPosition != 0) {
     refresh_cmd_timeout();
     if (! planner_queue_full()) {
       current_position[axis] += float((int)encoderPosition) * move_menu_scale;
@@ -1221,7 +1227,8 @@ static void _lcd_move(const char *name, int axis, int min, int max) {
     }
   }
   if (lcdDrawUpdate) lcd_implementation_drawedit(name, ftostr31(current_position[axis]));
-  if (LCD_CLICKED) lcd_goto_menu(lcd_move_menu_axis);
+  if (LCD_CLICKED) lcd_goto_menu(lcd_move_menu_axis); {
+  }
 }
 
 
@@ -1608,10 +1615,10 @@ calibrated:
     plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
     
     
-    if(only_z){/*
+    if(only_z){
         lcd_display_message_fullscreen_P(MSG_MEASURE_BED_REFERENCE_HEIGHT_LINE1);
         lcd_implementation_print_at(0, 3, 1);
-        lcd_printPGM(MSG_MEASURE_BED_REFERENCE_HEIGHT_LINE2);*/
+        lcd_printPGM(MSG_MEASURE_BED_REFERENCE_HEIGHT_LINE2);
     }else{
 		lcd_show_fullscreen_message_and_wait_P(MSG_PAPER);
         lcd_display_message_fullscreen_P(MSG_FIND_BED_OFFSET_AND_SKEW_LINE1);
@@ -1891,19 +1898,18 @@ void prusa_statistics(int _message) {
 		{
 			SERIAL_ECHO("{");
 			prusa_stat_printerstatus(4);
-			status_number = 4;
+			prusa_stat_farm_number();
 			prusa_stat_printinfo();
 			SERIAL_ECHOLN("}");
+			status_number = 4;
 		}
 		else
 		{
 			SERIAL_ECHO("{");
 			prusa_stat_printerstatus(1);
-			status_number = 1;
-			SERIAL_ECHO("[PFN:");
-			SERIAL_ECHO(farm_no);
-			SERIAL_ECHO("]");
+			prusa_stat_farm_number();
 			SERIAL_ECHOLN("}");
+			status_number = 1;
 		}
 		break;
 
@@ -1911,8 +1917,9 @@ void prusa_statistics(int _message) {
 		farm_status = 2;
 		SERIAL_ECHO("{");
 		prusa_stat_printerstatus(2);
-		status_number = 2;
+		prusa_stat_farm_number();
 		SERIAL_ECHOLN("}");
+		status_number = 2;
 		farm_timer = 1;
 		break;
 
@@ -1920,8 +1927,9 @@ void prusa_statistics(int _message) {
 		farm_status = 3;
 		SERIAL_ECHO("{");
 		prusa_stat_printerstatus(3);
-		status_number = 3;
+		prusa_stat_farm_number();
 		SERIAL_ECHOLN("}");
+		status_number = 3;
 		farm_timer = 1;
 
 		if (IS_SD_PRINTING)
@@ -1929,15 +1937,17 @@ void prusa_statistics(int _message) {
 			farm_status = 4;
 			SERIAL_ECHO("{");
 			prusa_stat_printerstatus(4);
-			status_number = 4;
+			prusa_stat_farm_number();
 			SERIAL_ECHOLN("}");
+			status_number = 4;
 		}
 		else
 		{
 			SERIAL_ECHO("{");
 			prusa_stat_printerstatus(3);
+			prusa_stat_farm_number();
+			SERIAL_ECHOLN("}");
 			status_number = 3;
-			SERIAL_ECHOLN("}");;
 		}
 		farm_timer = 1;
 		break;
@@ -1946,20 +1956,30 @@ void prusa_statistics(int _message) {
 
 		break;
 	case 4:		// print succesfull
-		SERIAL_ECHOLN("{[RES:1]}");
+		SERIAL_ECHOLN("{[RES:1]");
+		prusa_stat_printerstatus(status_number);
+		prusa_stat_farm_number();
+		SERIAL_ECHOLN("}");
 		farm_timer = 2;
 		break;
 	case 5:		// print not succesfull
-		SERIAL_ECHOLN("{[RES:0]}");
+		SERIAL_ECHOLN("{[RES:0]");
+		prusa_stat_printerstatus(status_number);
+		prusa_stat_farm_number();
+		SERIAL_ECHOLN("}");
 		farm_timer = 2;
 		break;
 	case 6:		// print done
-		SERIAL_ECHOLN("{[PRN:8]}");
+		SERIAL_ECHOLN("{[PRN:8]");
+		prusa_stat_farm_number();
+		SERIAL_ECHOLN("}");
 		status_number = 8;
 		farm_timer = 2;
 		break;
 	case 7:		// print done - stopped
-		SERIAL_ECHOLN("{[PRN:9]}");
+		SERIAL_ECHOLN("{[PRN:9]");
+		prusa_stat_farm_number();
+		SERIAL_ECHOLN("}");
 		status_number = 9;
 		farm_timer = 2;
 		break;
@@ -1971,32 +1991,45 @@ void prusa_statistics(int _message) {
 		farm_timer = 2;
 		break;
 	case 20:		// echo farm no
-		SERIAL_ECHO("{[PFN:");
-		SERIAL_ECHO(farm_no);
-		SERIAL_ECHOLN("]}");
+		SERIAL_ECHOLN("{");
+		prusa_stat_printerstatus(status_number);
+		prusa_stat_farm_number();
+		SERIAL_ECHOLN("}");
 		farm_timer = 5;
 		break;
 	case 21: // temperatures
 		SERIAL_ECHO("{");
 		prusa_stat_temperatures();
+		prusa_stat_farm_number();
+		prusa_stat_printerstatus(status_number);
 		SERIAL_ECHOLN("}");
 		break;
     case 22: // waiting for filament change
-        SERIAL_ECHOLN("{[PRN:5]}");
+        SERIAL_ECHOLN("{[PRN:5]");
+		prusa_stat_farm_number();
+		SERIAL_ECHOLN("}");
 		status_number = 5;
         break;
 	
 	case 90: // Error - Thermal Runaway
-		SERIAL_ECHOLN("{[ERR:1]}");
+		SERIAL_ECHOLN("{[ERR:1]");
+		prusa_stat_farm_number();
+		SERIAL_ECHOLN("}");
 		break;
 	case 91: // Error - Thermal Runaway Preheat
-		SERIAL_ECHOLN("{[ERR:2]}");
+		SERIAL_ECHOLN("{[ERR:2]");
+		prusa_stat_farm_number();
+		SERIAL_ECHOLN("}");
 		break;
 	case 92: // Error - Min temp
-		SERIAL_ECHOLN("{[ERR:3]}");
+		SERIAL_ECHOLN("{[ERR:3]");
+		prusa_stat_farm_number();
+		SERIAL_ECHOLN("}");
 		break;
 	case 93: // Error - Max temp
-		SERIAL_ECHOLN("{[ERR:4]}");
+		SERIAL_ECHOLN("{[ERR:4]");
+		prusa_stat_farm_number();
+		SERIAL_ECHOLN("}");
 		break;
 
     case 99:		// heartbeat
@@ -2016,6 +2049,12 @@ static void prusa_stat_printerstatus(int _status)
 {
 	SERIAL_ECHO("[PRN:");
 	SERIAL_ECHO(_status);
+	SERIAL_ECHO("]");
+}
+
+static void prusa_stat_farm_number() {
+	SERIAL_ECHO("[PFN:");
+	SERIAL_ECHO(farm_no);
 	SERIAL_ECHO("]");
 }
 
@@ -4236,7 +4275,7 @@ static void lcd_selftest_screen_step(int _row, int _col, int _state, const char 
 static void lcd_quick_feedback()
 {
   lcdDrawUpdate = 2;
-  blocking_enc = millis() + 500;
+  button_pressed = false;
   lcd_implementation_quick_feedback();
 }
 
@@ -4287,6 +4326,7 @@ static void menu_action_setting_edit_callback_bool(const char* pstr, bool* ptr, 
 #endif//ULTIPANEL
 
 /** LCD API **/
+
 void lcd_init()
 {
   lcd_implementation_init();
@@ -4380,16 +4420,17 @@ void lcd_update_enable(bool enabled)
 
 void lcd_update(uint8_t lcdDrawUpdateOverride)
 {
-  if (lcdDrawUpdate < lcdDrawUpdateOverride)
-    lcdDrawUpdate = lcdDrawUpdateOverride;
 
-  if (! lcd_update_enabled)
-      return;
+	if (lcdDrawUpdate < lcdDrawUpdateOverride)
+		lcdDrawUpdate = lcdDrawUpdateOverride;
+
+	if (!lcd_update_enabled)
+		return;
 
 #ifdef LCD_HAS_SLOW_BUTTONS
   slow_buttons = lcd_implementation_read_slow_buttons(); // buttons which take too long to read in interrupt context
 #endif
-
+  
   lcd_buttons_update();
 
 #if (SDCARDDETECT > 0)
@@ -4451,8 +4492,8 @@ void lcd_update(uint8_t lcdDrawUpdateOverride)
 		  encoderDiff = 0;
 		  lcd_timeoutToStatus = millis() + LCD_TIMEOUT_TO_STATUS;
 	  }
-	  if (LCD_CLICKED)
-		  lcd_timeoutToStatus = millis() + LCD_TIMEOUT_TO_STATUS;
+
+	  /*if (LCD_CLICKED)*/ lcd_timeoutToStatus = millis() + LCD_TIMEOUT_TO_STATUS;
 #endif//ULTIPANEL
 
 #ifdef DOGLCD        // Changes due to different driver architecture of the DOGM display
@@ -4503,14 +4544,14 @@ void lcd_printer_connected() {
 	printer_connected = true;
 }
 
-void lcd_ping() {
+void lcd_ping() { //chceck if printer is connected to monitoring when in farm mode
 	if (farm_mode) {
 		bool empty = is_buffer_empty();
 		if ((millis() - PingTime) * 0.001 > (empty ? PING_TIME : PING_TIME_LONG)) { //if commands buffer is empty use shorter time period
 																							  //if there are comamnds in buffer, some long gcodes can delay execution of ping command
 																							  //therefore longer period is used
 			printer_connected = false;
-			lcd_ping_allert();
+			//lcd_ping_allert(); //acustic signals
 		}
 		else {
 			lcd_printer_connected();
@@ -4587,9 +4628,50 @@ void lcd_buttons_update()
   if (READ(BTN_EN1) == 0)  newbutton |= EN_A;
   if (READ(BTN_EN2) == 0)  newbutton |= EN_B;
 #if BTN_ENC > 0
-  if ((blocking_enc < millis()) && (READ(BTN_ENC) == 0))
-    newbutton |= EN_C;
-#endif
+  if (lcd_update_enabled == true) { //if we are in non-modal mode, long press can be used and short press triggers with button release
+	  if (READ(BTN_ENC) == 0) { //button is pressed	  
+
+		  if (button_pressed == false && long_press_active == false) {
+			  if (currentMenu != lcd_move_z) {
+				  savedMenu = currentMenu;
+				  savedEncoderPosition = encoderPosition;
+			  }
+			  long_press_timer = millis();
+			  button_pressed = true;
+		  }
+		  else {
+			  if (millis() - long_press_timer > LONG_PRESS_TIME) { //long press activated
+				   
+				  long_press_active = true;
+				  move_menu_scale = 1.0;
+				  lcd_goto_menu(lcd_move_z);
+			  }
+		  }
+	  }
+	  else { //button not pressed
+		  if (button_pressed) { //button was released
+			  if (long_press_active == false) { //button released before long press gets activated
+				  if (currentMenu == lcd_move_z) {
+					  //return to previously active menu and previous encoder position
+					  lcd_goto_menu(savedMenu, savedEncoderPosition);
+				  }
+				  else {
+					  newbutton |= EN_C;
+				  }
+			  }
+			  //button_pressed is set back to false via lcd_quick_feedback function
+		  }
+		  else {			  
+			  long_press_active = false;
+		  }
+	  }
+  }
+  else { //we are in modal mode
+	  if (READ(BTN_ENC) == 0)
+		  newbutton |= EN_C; 
+  }
+  
+#endif  
   buttons = newbutton;
 #ifdef LCD_HAS_SLOW_BUTTONS
   buttons |= slow_buttons;
